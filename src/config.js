@@ -1,4 +1,7 @@
 module.exports = {
   TOKEN: '1735088433:AAG4rgwQ9O1o09JMipy67npDnKKo0dqvZC8',
-  YOUTUBE_TOKEN: 'UCc5cX1qMCdRY0Vm1tL4KKqg'
+  DB_URL: 'mongodb://localhost/sundayfootballvote_bot',
+  groupFootballId: '-1001229749466',
+  adminRuslanId: 698484110,
+  adminEgorId: 510544523
 }
