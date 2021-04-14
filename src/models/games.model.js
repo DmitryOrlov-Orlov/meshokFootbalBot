@@ -4,22 +4,39 @@ const Schema = mongoose.Schema;
 
 const Games = new Schema({
   gameDate: {
-    type: String,
-    poll: {},
-    gameStatistics: {
-      goal: {
-        type: Object
-      },
-      ownGoal: {
-        type: Object
-      },
-      assistant: {
-        type: Object
-      }
+    type: Date
+  },
+  pollId: {
+    type: String
+  },
+  pollDescription: {
+    type: String
+  },
+  gameMaxPlayers: {
+    type: Number
+  },
+  gameStat: [{
+    userId: {
+      type: Number
     },
-    gameOver: {
-      type: Boolean
+    firstName: {
+      type: String
+    },
+    nikname: {
+      type: String
+    },
+    goals: {
+      type: Number
+    },
+    assistant: {
+      type: Number
+    },
+    ownGoal: {
+      type: Number
     }
+  }],
+  gameOver: {
+    type: Boolean
   }
 })
 

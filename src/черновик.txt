@@ -226,7 +226,7 @@ bot.on('message', msg => {
     max = Number(msg.text);
     bot.sendPoll(chatId,
       `Надо набрать ${msg.text} мешков!`,
-      ['Да', 'Нет', 'Незнаю', 'Если народу не хватит, то я +++'], {
+      ['Да', 'Нет', 'Незнаю'], {
       is_closed: false,
       is_anonymous: false
     })
@@ -261,27 +261,54 @@ bot.on('poll', poll => {
   }
 })
 
-/* console.log('YOUTUBE_TOKEN',);
-google.youtube('v3').search.list({
-  key: 'UCc5cX1qMCdRY0Vm1tL4KKqg',
-  part: 'snippet',
-  q: 'joji',
-})
-  .then((response) => {
-    console.lo(response);
+stopPoll
+
+// закрыть опрос
+Poll poll = await botClient.StopPollAsync(
+    chatId: pollMessage.Chat.Id,
+    messageId: pollMessage.MessageId
+);
+
+
+
+
+  Promise.all([
+    Users.findOne({ userId: poll_answer.user.id }),
+    Games.findOne({ pollId: poll_answer.poll_id })
+  ]).then(([user, game]) => {
+    console.log('user', user);
+    console.log('game', game);
+  })
+
+
+  
+  /* Promise.all([
+    Games.findOne({ pollId: poll_answer.poll_id }),
+    Users.findOne({ userId: poll_answer.user.id })
+  ]).then(([game, user]) => {
+    console.log('game', game);
+    console.log('user', user);
   }) */
-/* var youtube = google.youtube({
-  version: 'v3',
-  auth: "UCc5cX1qMCdRY0Vm1tL4KKqg&list=PLNIKmHiw_fIbVM7VLZLSRSDFGLpnNuuse&index"
-}); */
-/* youtube.search.list({
-  part: 'snippet',
-  q: 'your search query'
-}, function (err, data) {
-  if (err) {
-    console.error('Error: ' + err);
-  }
-  if (data) {
-    console.log(data)
-  }
-}); */
+  //Games.update({ pollId: poll_answer.poll_id }, { $set: { gameMaxPlayers: 30 } })
+  /* db.users.update({name : "Tom", age: 29}, {$set: {age : 30}}) */
+  /* Games.find({ pollId: poll_answer.poll_id }, (err, game) => {
+    console.log(game);
+    Games({
+      gameStat: {
+        userId: poll_answer.user.id,
+        firstName: poll_answer.user.first_name,
+      }
+    }).save()
+  }) */
+  /* console.log('poll_answer', poll_answer);
+  console.log('poll_answer.poll_id', poll_answer.poll_id);
+  console.log('poll_answer.user.id', poll_answer.user.id); */
+  /* Users.find({ userId: poll_answer.user.id }, (err, users) => {
+    console.log('нашел ' + users);
+  }).limit(1) */
+  /* const voterCount = poll.options[0].voter_count;
+  Users.find({})
+  if (voterCount == max) {
+    bot.sendMessage(chatId, 'Голосование закончено. \nВсех мешков попрошу не опаздывать.');
+    return;
+  } */
