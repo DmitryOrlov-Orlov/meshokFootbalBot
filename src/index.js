@@ -37,7 +37,7 @@ bot.onText(/\/help/, msg => {
   bot.sendMessage(msg.from.id, `Что умеет данный бот:\n\nСписок команд доступных пользователю:\n1) /addUser - пользователю нужно закрепиться за своим именем, это позволит нам вести статистику (предварительно нужно сообщить администратору, что бы тот добавил корректное имя в базу).\n2) /listPlayers - показать список пользователей.\n3) /help - помощь.`);
 })
 bot.onText(/\/x/, msg => {
-  bot.sendMessage(msg.from.id, `Что умеет данный бот:\n\nСписок команд доступных пользователю:\n1) /addUser - пользователю нужно закрепиться за своим именем, это позволит нам вести статистику (предварительно нужно сообщить администратору, что бы тот добавил корректное имя в базу).\n2) /listPlayers - показать список пользователей.\n\nСписок команд доступных Администратору: \n1) /adminAddName - создать профиль. \n2) /adminDelPlayer - удалить профиль.\n3) /adminChangeNamePlayer - редактировать имя профиля.\n4) /adminCreatePoll ЧЧ.ММ ДД.ММ.ГГГГ Х\nгде: Х - это количество игроков\n\n5) /help - помощь.`);
+  bot.sendMessage(msg.from.id, `Что умеет данный бот:\n\nСписок команд доступных пользователю:\n1) /addUser - пользователю нужно закрепиться за своим именем, это позволит нам вести статистику (предварительно нужно сообщить администратору, что бы тот добавил корректное имя в базу).\n2) /listPlayers - показать список пользователей.\n\nСписок команд доступных Администратору: \n1) /adminAddName - создать профиль. \n2) /adminDelPlayer - удалить профиль.\n3) /adminChangeNamePlayer - редактировать имя профиля.\n4) /adminCreatePoll ЧЧ.ММ ДД.ММ.ГГГГ Х\nгде: Х - это количество игроков\n5) /adminShowGamesList - показать игры доступные для создания счётчика\n6) /adminShowGamesAll - показать все игры которые есть в базе \n7) /help - помощь.`);
 })
 
 //Добавление НОВОГО ИМЕНИ в базу данных
@@ -52,7 +52,7 @@ bot.onText(/\/adminAddName/, msg => {
 bot.on('message', msg => {
   if (adminAddName === 1 && msg.text[0] !== '/') {
     Users.find({}, (err, users) => {
-      let perem = 10;
+      let perem = 0;
       users.length === 0 ? perem = 0 : perem = users[0].numberId;
       Users({
         userId: 0,
@@ -277,15 +277,29 @@ bot.on('message', msg => {
       is_closed: false,
       is_anonymous: false
     }).then((dataPoll) => {
-      Games({
-        gameDate: gameDate,
-        pollId: dataPoll.poll.id,
-        pollDescription: msg.text,
-        gameMaxPlayers: gameMaxPlayers,
-        gameStat: [],
-        gameOver: false
-      }).save();
-      bot.sendMessage(msg.chat.id, 'Поздравляю, в чате должен появиться опрос. Проверь!\nЗа два часа до начала игры, голосование закроется.')
+      Games.find({}, (err, game) => {
+        console.log('game', game);
+        let perem = 0;
+        game.length === 0 ? perem = 0 : perem = game[0].numberId;
+        Games({
+          gameDate: gameDate,
+          numberId: perem + 1,
+          pollId: dataPoll.poll.id,
+          pollDescription: msg.text,
+          gameMaxPlayers: gameMaxPlayers,
+          gameStat: [],
+          gameOver: false
+        }).save()
+        bot.sendMessage(msg.chat.id, 'Поздравляю, в чате должен появиться опрос. Проверь!\nЗа два часа до начала игры, голосование закроется.')
+      }).sort({ numberId: 1 })
+        .then(() => {
+          Games.find({}, (err, game) => {
+            game.forEach((item, index) => {
+              item.numberId = index + 1;
+              Games(item).save();
+            })/* .sort({ gameDate: -1 }) */
+          })
+        })
     });
   }
   createPoll = 0;
@@ -324,5 +338,60 @@ bot.on('poll_answer', poll_answer => {
   }
 })
 
-
-//создаем счетчик
+//вывести на экран список игр доступных для создания счётчика
+bot.onText(/\/adminShowGamesList/, msg => {
+  Games.find({}, (err, game) => {
+    game.forEach((item, index) => {
+      item.numberId = index + 1;
+      Games(item).save();
+    })
+  }).sort({ gameDate: -1 })
+    .then(() => {
+      Games.find({ gameOver: false }, (err, game) => {
+        if (game.length === 0) {
+          bot.sendMessage(msg.from.id, `База данных пуста!`);
+          return;
+        }
+        let listGames = '';
+        for (key in game) {
+          let year = game[key].gameDate.toISOString().split("-")[0];
+          let month = game[key].gameDate.toISOString().split("-")[1];
+          let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
+          let date = `${day}.${month}.${year}`
+          listGames += `${game[key].numberId}) ${date} - игроков: ${game[key].gameMaxPlayers} - ${game[key].gameOver}\n`;
+        }
+        bot.sendMessage(msg.from.id, `Список доступных игр в базе: \n${listGames}`);
+        if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
+          bot.sendMessage(msg.from.id, `/adminCreateCounter - для создания счётчика. Просто введите данныю команду и вторым параметром введите порядковый номер игры.`);
+        }
+      })
+        .sort({ numberId: 1 })
+    })
+})
+//вывести на экран список игр которые есть в базе
+bot.onText(/\/adminShowGamesAll/, msg => {
+  Games.find({}, (err, game) => {
+    game.forEach((item, index) => {
+      item.numberId = index + 1;
+      Games(item).save();
+    })
+  }).sort({ gameDate: -1 })
+    .then(() => {
+      Games.find({}, (err, game) => {
+        if (game.length === 0) {
+          bot.sendMessage(msg.from.id, `База данных пуста!`);
+          return;
+        }
+        let listGames = '';
+        for (key in game) {
+          let year = game[key].gameDate.toISOString().split("-")[0];
+          let month = game[key].gameDate.toISOString().split("-")[1];
+          let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
+          let date = `${day}.${month}.${year}`
+          listGames += `${game[key].numberId}) ${date} - игроков: ${game[key].gameMaxPlayers} - ${game[key].gameOver}\n`;
+        }
+        bot.sendMessage(msg.from.id, `Список доступных игр в базе: \n${listGames}`);
+      })
+        .sort({ numberId: 1 })
+    })
+})

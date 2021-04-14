@@ -6,6 +6,9 @@ const Games = new Schema({
   gameDate: {
     type: Date
   },
+  numberId: {
+    type: Number
+  },
   pollId: {
     type: String
   },
