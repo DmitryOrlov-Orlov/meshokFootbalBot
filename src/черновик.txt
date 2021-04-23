@@ -312,3 +312,29 @@ Poll poll = await botClient.StopPollAsync(
     bot.sendMessage(chatId, 'Голосование закончено. \nВсех мешков попрошу не опаздывать.');
     return;
   } */
+
+
+
+
+
+
+
+
+  bot.on('message', msg => {
+  console.log('msg');
+  /* Games.findOneAndUpdate({ _id: "60787a319a12611c18d3369a", "gameStat._id": "60787a359a12611c18d3369e" }, {
+    $set: { "gameStat.$.goals": 102 },
+  }, { multi: true }, (e, data) => {
+    console.log('123', data);
+  }) */
+  /* Person.update({'items.id': 2}, {'$set': {
+    'items.$.name': 'updated item2',
+    'items.$.value': 'two updated'
+}}, function(err) { ... */
+
+  /* Games.findOneAndUpdate({ _id: "60787a319a12611c18d3369a" }, {
+    $set: { gameMaxPlayers: 200 },
+  }, { multi: true }, (e, data) => {
+    console.log('123', data);
+  }) */
+})

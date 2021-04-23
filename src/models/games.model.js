@@ -38,6 +38,9 @@ const Games = new Schema({
       type: Number
     }
   }],
+  urlYoutube: {
+    type: String
+  },
   gameOver: {
     type: Boolean
   }
