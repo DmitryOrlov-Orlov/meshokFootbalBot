@@ -38,12 +38,18 @@ const Games = new Schema({
       type: Number
     }
   }],
-  urlYoutube: {
+  urlYoutubeFull: {
+    type: String
+  },
+  urlYoutubeReview: {
     type: String
   },
   gameOver: {
     type: Boolean
-  }
+  },
+  log: {
+    type: String
+  },
 })
 
 mongoose.model('games', Games)
