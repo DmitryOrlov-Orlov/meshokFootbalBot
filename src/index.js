@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const config = require('./config');
 const helper = require('./helper');
 const keyboardGamesActions = require('./keyboard-games-actions');
-const { debug } = require('./helper');
 
 helper.logStart();
 mongoose.Promise = global.Promise;
@@ -46,7 +45,7 @@ bot.onText(/\/x/, msg => {
   if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
     const commandUser = `Список команд доступных пользователю: \n1) /adduser - пользователю нужно закрепиться за своим именем, это позволит нам вести статистику(предварительно нужно сообщить администратору, что бы тот добавил корректное имя в базу).\n2) /listplayers - показать список пользователей.`;
     let commandAdmin = `Список команд доступных Администратору: \n1) /adminAddName - создать профиль. \n2) /adminDelPlayer - удалить профиль.\n3) /adminChangeNamePlayer - редактировать имя профиля.\n4) /adminCreatePoll (ЧЧ.ММ) (ДД.ММ.ГГГГ) (Х) - сохдать опрос. Где ЧЧ.ММ - это время, ДД.ММ.ГГГГ - это дата, Х - это количество игроков.\n5) /adminShowGamesList - показать игры доступные для создания счётчика.\n6) /adminShowGamesAll - показать все игры которые есть в базе.\n7) /adminShowGamesLimit_10 - показать последние 10 игр.\n8) /adminCreateCounter (N) - создать счётчик статистики. Где N - это порядковый номер игры.\n9) /adminShowYouTubeURL_All - показать все ссылки на YouTube.\n`;
-    commandAdmin += `10) /adminShowYouTubeURL_10 - показать последние 10 ссылок на YouTube.\n11) /adminAddYouTubeURL_Review (N) (Link) - добавить ссылку на обзор матча. Где N - это порядковый номер. Link - это ссылка на обзор матча.\n12) /adminAddYouTubeURL_Full (N) (Link) - добавить ссылку на полный матч. Где N - это порядковый номер. Link - это ссылка на полный матч.\n13) /help - помощь.`;
+    commandAdmin += `10) /adminShowYouTubeURL_10 - показать последние 10 ссылок на YouTube.\n11) /adminAddYouTubeURL_Review (N) (Link) - добавить ссылку на обзор матча. Где N - это порядковый номер. Link - это ссылка на обзор матча.\n12) /adminAddYouTubeURL_Full (N) (Link) - добавить ссылку на полный матч. Где N - это порядковый номер. Link - это ссылка на полный матч.\n13) /adminShowIgnoreTheGame - показать список игроков игнорирущих голосования на футбол.\n14) /help - помощь.`;
     bot.sendMessage(msg.from.id, `Что умеет данный бот:\n\n${commandUser}\n\n${commandAdmin}`);
   }
 })
@@ -75,6 +74,7 @@ bot.on('message', msg => {
         goals: 0,
         assistant: 0,
         ownGoal: 0,
+        voteСount: 0
       }).save()
         .then((user) => {
           bot.sendMessage(msg.from.id, `В базу добавлен - ${user.nikname}.\n\n/adminAddName - добавить профиль\n/listplayers - показать список пользователей`);
@@ -110,12 +110,7 @@ bot.onText(/\/listplayers/, msg => {
   })
     .sort({ numberId: 1 })
     .then(() => {
-      Users.find({}, (err, user) => {
-        user.forEach((item, index) => {
-          item.numberId = index + 1;
-          Users(item).save();
-        })
-      })
+      helper.handlerSortingUsers(Users);
     })
 })
 
@@ -160,12 +155,7 @@ bot.on('message', msg => {
         bot.sendMessage(msg.from.id, `Был удален: ${user.nikname} - ${user.firstName}\n/listplayers - показать список пользователей.`);
         user.remove();
       }).then(() => {
-        Users.find({}, (err, user) => {
-          user.forEach((item, index) => {
-            item.numberId = index + 1;
-            Users(item).save();
-          })
-        })
+        helper.handlerSortingUsers(Users);
       })
     })
     adminDelPlayer = 0;
@@ -189,7 +179,6 @@ bot.onText(/\/adduser/, msg => {
     bot.sendMessage(msg.from.id, `Привет, выбери из списка свое Имя, и отправь порядковый номер. Это позволит сохранить тебя в базе.\n\nСписок пользователей в базе: \n${listPlayers}`);
   }).sort({ numberId: 1 })
 })
-
 bot.on('message', msg => {
   if (addUser === 1 && msg.text[0] !== '/') {
     let numberId = Number(msg.text);
@@ -249,12 +238,7 @@ bot.onText(/\/adminChangeNamePlayer/, msg => {
     })
       .sort({ numberId: 1 })
       .then(() => {
-        Users.find({}, (err, user) => {
-          user.forEach((item, index) => {
-            item.numberId = index + 1;
-            Users(item).save();
-          })
-        })
+        helper.handlerSortingUsers(Users);
       })
   }
 })
@@ -288,7 +272,6 @@ bot.on('message', msg => {
 //Создаем новую сущность  Games
 let gameDate = '';
 let gameMaxPlayers = 0;
-
 bot.onText(/\/adminCreatePoll (.+) (.+) (.+)/, (msg, [source, time, date, maxPalyers]) => {
   //обработать баг, если /createGame много параметров на экране!!!!!!!!!!!!!!!
   if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
@@ -300,12 +283,24 @@ bot.onText(/\/adminCreatePoll (.+) (.+) (.+)/, (msg, [source, time, date, maxPal
     let minutes = Number(time.match(/\d+/g)[1]);
     gameDate = new Date(year, month, day, hour, minutes);
     gameMaxPlayers = maxPalyers;
-    bot.sendMessage(msg.chat.id, `Хорошо, игра состоится ${day}.${month}.${year} в ${hour - 5}:${minutes}.\nВ команде ${maxPalyers} человек.\n\nТеперь напишите вводную информацию для команды (эта инфа пойдет в описание опроса).`);
+    hour = hour - 5
+    if (String(day).length === 1) {
+      day = `0${day}`;
+    }
+    if (String(month).length === 1) {
+      month = `0${month}`;
+    }
+    if (String(hour).length === 1) {
+      hour = `0${hour}`;
+    }
+    if (String(minutes).length === 1) {
+      minutes = `0${minutes}`;
+    }
+    bot.sendMessage(msg.chat.id, `Хорошо, игра состоится ${day}.${month}.${year} в ${hour}:${minutes}.\nВ команде ${maxPalyers} человек.\n\nТеперь напишите вводную информацию для команды (эта инфа пойдет в описание опроса).`);
   } else {
     bot.sendMessage(msg.from.id, "Ошибка. Данная команда доступна администратору.\n/help - помощь")
   }
 })
-
 bot.on('message', msg => {
   if (createPoll === 1 && msg.text[0] !== '/') {
     bot.sendPoll(config.groupFootballId,
@@ -337,15 +332,27 @@ bot.on('message', msg => {
               item.numberId = index + 1;
               Games(item).save();
             })
-          }).sort({ gameDate: -1 })
+          }).sort({ gameDate: -1 });
+          helper.handlerVotedCount(Users);
         })
     });
   }
   createPoll = 0;
 })
-
 //в базу добавляется человек который проголосовал
 bot.on('poll_answer', poll_answer => {
+  Games.find({ pollId: poll_answer.poll_id }, (err, game) => {
+    if (game.length === 1) {
+      Users.findOneAndUpdate({ userId: poll_answer.user.id }, {
+        $set: {
+          voteСount: 0
+        },
+      }, { multi: true }, (e, data) => {
+        console.log('handlerVotedCount 0 обнуляем');
+      })
+      return;
+    }
+  })
   if (poll_answer.option_ids[0] === 0) {
     Users.find({ userId: poll_answer.user.id }, (err, user) => {
       if (user.length === 0) {
@@ -537,7 +544,6 @@ bot.on('callback_query', query => {
   let playerAndAction = query.data.split('#')[0];
   let actionAddDel = query.data.split('#')[1];
   let startId = query.data.split('#')[2];
-
   if (actionAddDel === 'start' && startId !== '') {
     bot.sendMessage(query.from.id, 'Хорошо. Время задано!')
       .then(() => {
@@ -659,11 +665,20 @@ bot.on('callback_query', query => {
             let logAssistant = 'Голевые пасы\n';
             let logOwnGoal = 'Автоголы\n';
             Games.find({ _id: peremGameId }, (err, game) => {
-              for (item of game[0].gameStat) {
-                logGoals += `${item.nikname} = ${item.goals}\n`;
-                logAssistant += `${item.nikname} = ${item.assistant}\n`;
-                logOwnGoal += `${item.nikname} = ${item.ownGoal}\n`;
-                console.log('game', item);
+              for (item of game[0].gameStat.sort((a, b) => a.goals > b.goals ? -1 : 1)) {
+                if (item.goals > 0) {
+                  logGoals += `${item.nikname} = ${item.goals}\n`;
+                }
+              }
+              for (item of game[0].gameStat.sort((a, b) => a.assistant > b.assistant ? -1 : 1)) {
+                if (item.assistant > 0) {
+                  logAssistant += `${item.nikname} = ${item.assistant}\n`;
+                }
+              }
+              for (item of game[0].gameStat.sort((a, b) => a.ownGoal > b.ownGoal ? -1 : 1)) {
+                if (item.ownGoal > 0) {
+                  logOwnGoal += `${item.nikname} = ${item.ownGoal}\n`;
+                }
               }
             }).then((data) => {
               let date = game[0].gameDate.toISOString().split('T')[0];
@@ -820,4 +835,21 @@ bot.onText(/\/adminAddYouTubeURL_Review (.+) (.+)/, (msg, [source, numberId, URl
       }
     })
   }
+})
+//показать список игнорщиков
+bot.onText(/\/adminShowIgnoreTheGame/, msg => {
+  let mess = 'Список игроков игнорирующих голосования на футбол:\n';
+  Users.find({}, (err, user) => {
+    for (item in user) {
+      let userName = user[item].nikname;
+      let voteСount = user[item].voteСount;
+      if (voteСount > 0) {
+        mess += `${userName} = ${voteСount}\n`
+      }
+    }
+  }).then(() => {
+    bot.sendMessage(msg.from.id, mess);
+    console.log('2', mess);
+  })
+
 })

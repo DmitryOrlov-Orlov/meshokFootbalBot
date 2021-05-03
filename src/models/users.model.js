@@ -29,7 +29,10 @@ const Users = new Schema({
   },
   ownGoal: {
     type: Number
-  }
+  },
+  voteСount: {
+    type: Number
+  },
 })
 
 mongoose.model('users', Users)
