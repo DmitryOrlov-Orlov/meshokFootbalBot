@@ -44,6 +44,12 @@ const Games = new Schema({
   urlYoutubeReview: {
     type: String
   },
+  urlYoutubeLeftHalf: {
+    type: String
+  },
+  urlYoutubeRightHalf: {
+    type: String
+  },
   gameOver: {
     type: Boolean
   },

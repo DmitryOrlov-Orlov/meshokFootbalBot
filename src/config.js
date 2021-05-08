@@ -5,3 +5,5 @@ module.exports = {
   adminRuslanId: 698484110,
   adminEgorId: 510544523
 }
+//я 698484110
+//егор 510544523

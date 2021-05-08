@@ -8,6 +8,7 @@ module.exports = {
   debug(obj = {}) {
     return JSON.stringify(obj, null, 4)
   },
+  //можно будет удалить
   handlerVotedCount(Users) {
     Users.find({}, (err, user) => {
       for (item in user) {
@@ -22,6 +23,7 @@ module.exports = {
       }
     })
   },
+  //можно будет удалить
   handlerSortingUsers(Users) {
     Users.find({}, (err, user) => {
       user.forEach((item, index) => {

@@ -2,6 +2,13 @@ const TelegramBot = require('node-telegram-bot-api');
 const mongoose = require('mongoose');
 const config = require('./config');
 const helper = require('./helper');
+const adminShowIgnoreTheGame = require('./commands/adminShowIgnoreTheGame');
+const adminYouTube = require('./commands/adminYouTube');
+const adminShowGames = require('./commands/adminShowGames');
+const listplayers = require('./commands/listplayers');
+const help = require('./commands/help');
+const start = require('./commands/start');
+const x = require('./commands/x');
 const keyboardGamesActions = require('./keyboard-games-actions');
 
 helper.logStart();
@@ -20,7 +27,6 @@ const Games = mongoose.model('games');
 const bot = new TelegramBot(config.TOKEN, {
   polling: true
 })
-
 //скидываем все счетчики
 let adminAddName = 0;
 let adminDelPlayer = 0;
@@ -33,23 +39,6 @@ bot.on('message', msg => {
     adminChangeNamePlayer = 0;
   }
 })
-
-bot.onText(/\/help/, msg => {
-  const commandUser = `Что умеет данный бот:\n\nСписок команд доступных пользователю:\n1) /adduser - пользователю нужно закрепиться за своим именем, это позволит нам вести статистику (предварительно нужно сообщить администратору, что бы тот добавил корректное имя в базу).\n2) /listplayers - показать список пользователей.\n3) /help - помощь.`
-  bot.sendMessage(msg.from.id, commandUser);
-})
-bot.onText(/\/start/, msg => {
-  bot.sendMessage(msg.from.id, `Данный бот может вести статистику матча(голы / голевые пасы / автоголы).Для этого Вам необходимо сказать администратору что бы он добавил Ваше имя в базу, после чего вы сможете закрепиться за своим именем.Если этого не сделаете, статистики на вас не будет.  /listplayers - показать список имен. /adduser - закрепиться за своим именем.`);
-})
-bot.onText(/\/x/, msg => {
-  if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
-    const commandUser = `Список команд доступных пользователю: \n1) /adduser - пользователю нужно закрепиться за своим именем, это позволит нам вести статистику(предварительно нужно сообщить администратору, что бы тот добавил корректное имя в базу).\n2) /listplayers - показать список пользователей.`;
-    let commandAdmin = `Список команд доступных Администратору: \n1) /adminAddName - создать профиль. \n2) /adminDelPlayer - удалить профиль.\n3) /adminChangeNamePlayer - редактировать имя профиля.\n4) /adminCreatePoll (ЧЧ.ММ) (ДД.ММ.ГГГГ) (Х) - сохдать опрос. Где ЧЧ.ММ - это время, ДД.ММ.ГГГГ - это дата, Х - это количество игроков.\n5) /adminShowGamesList - показать игры доступные для создания счётчика.\n6) /adminShowGamesAll - показать все игры которые есть в базе.\n7) /adminShowGamesLimit_10 - показать последние 10 игр.\n8) /adminCreateCounter (N) - создать счётчик статистики. Где N - это порядковый номер игры.\n9) /adminShowYouTubeURL_All - показать все ссылки на YouTube.\n`;
-    commandAdmin += `10) /adminShowYouTubeURL_10 - показать последние 10 ссылок на YouTube.\n11) /adminAddYouTubeURL_Review (N) (Link) - добавить ссылку на обзор матча. Где N - это порядковый номер. Link - это ссылка на обзор матча.\n12) /adminAddYouTubeURL_Full (N) (Link) - добавить ссылку на полный матч. Где N - это порядковый номер. Link - это ссылка на полный матч.\n13) /adminShowIgnoreTheGame - показать список игроков игнорирущих голосования на футбол.\n14) /help - помощь.`;
-    bot.sendMessage(msg.from.id, `Что умеет данный бот:\n\n${commandUser}\n\n${commandAdmin}`);
-  }
-})
-
 //Добавление НОВОГО ИМЕНИ в базу данных
 bot.onText(/\/adminAddName/, msg => {
   if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
@@ -83,37 +72,6 @@ bot.on('message', msg => {
     }).sort({ numberId: -1 })
   }
 })
-//Выводим Список игроков
-bot.onText(/\/listplayers/, msg => {
-  Users.find({}, (err, users) => {
-    if (users.length === 0 && config.adminRuslanId === Number(msg.from.id) || config.adminEgorId === Number(msg.from.id)) {
-      bot.sendMessage(msg.from.id, `База данных пуста! \n\n/adminAddName - добавить профиль`);
-      return;
-    }
-    if (users.length === 0) {
-      console.log(users.length === 0 && config.adminRuslanId !== Number(msg.from.id) || config.adminEgorId !== Number(msg.from.id));
-      bot.sendMessage(msg.from.id, `База данных пуста! Обратитесь к администратору.`);
-      return;
-    }
-    let listPlayers = '';
-    for (key in users) {
-      listPlayers += `${users[key].numberId}) ${users[key].nikname} - ${users[key].firstName}\n`;
-    }
-    bot.sendMessage(msg.from.id, `Список пользователей в базе: \n${listPlayers}`)
-      .then(() => {
-        if (config.adminRuslanId === Number(msg.from.id) || config.adminEgorId === Number(msg.from.id)) {
-          bot.sendMessage(msg.from.id, `/adminAddName - добавить профиль\n/adminDelPlayer - удалить профиль\n/adminChangeNamePlayer - изменить имя у пользователя`);
-        } else {
-          bot.sendMessage(msg.from.id, `/adduser - закрепиться за своим именем`);
-        }
-      })
-  })
-    .sort({ numberId: 1 })
-    .then(() => {
-      helper.handlerSortingUsers(Users);
-    })
-})
-
 //Удалить из базы
 bot.onText(/\/adminDelPlayer/, msg => {
   if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
@@ -161,7 +119,6 @@ bot.on('message', msg => {
     adminDelPlayer = 0;
   }
 })
-
 //Пользователь региструется в базе данных
 let addUser = 0;
 bot.onText(/\/adduser/, msg => {
@@ -273,30 +230,33 @@ bot.on('message', msg => {
 let gameDate = '';
 let gameMaxPlayers = 0;
 bot.onText(/\/adminCreatePoll (.+) (.+) (.+)/, (msg, [source, time, date, maxPalyers]) => {
+  console.log('msg', msg.from.first_name);
   //обработать баг, если /createGame много параметров на экране!!!!!!!!!!!!!!!
   if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
-    createPoll = 1;
-    let year = Number(date.match(/\d+/g)[2]);
-    let month = Number(date.match(/\d+/g)[1]) - 1;
-    let day = Number(date.match(/\d+/g)[0]);
-    let hour = Number(time.match(/\d+/g)[0]) + 5;
-    let minutes = Number(time.match(/\d+/g)[1]);
-    gameDate = new Date(year, month, day, hour, minutes);
-    gameMaxPlayers = maxPalyers;
-    hour = hour - 5
-    if (String(day).length === 1) {
-      day = `0${day}`;
+    try {
+      console.log('adminCreatePoll try');
+      createPoll = 1;
+      let year = Number(date.match(/\d+/g)[2]);
+      let month = Number(date.match(/\d+/g)[1]) - 1;
+      let day = Number(date.match(/\d+/g)[0]);
+      let hour = Number(time.match(/\d+/g)[0]) + 5;
+      let minutes = Number(time.match(/\d+/g)[1]);
+      gameDate = new Date(year, month, day, hour, minutes);
+      console.log('gameDate', gameDate.toISOString());
+      gameMaxPlayers = maxPalyers;
+      hour = hour - 5;
+      String(day).length === 1 ? day = `0${day}` : day;
+      String(month).length === 1 ? month = `0${month + 1}` : month + 1;
+      String(hour).length === 1 ? hour = `0${hour}` : hour;
+      String(minutes).length === 1 ? minutes = `0${minutes}` : minutes;
+      bot.sendMessage(msg.chat.id, `Хорошо, игра состоится ${day}.${month}.${year} в ${hour}:${minutes}.\nВ команде ${maxPalyers} человек.\n\nТеперь напишите вводную информацию для команды (эта инфа пойдет в описание опроса).`);
+    } catch (e) {
+      console.log('adminCreatePoll catch');
+      console.log('errorororo', e);
+      bot.sendMessage(msg.from.id, "Ошибка. Введите верные параметры!");
+    } finally {
+      console.log('adminCreatePoll finally');
     }
-    if (String(month).length === 1) {
-      month = `0${month}`;
-    }
-    if (String(hour).length === 1) {
-      hour = `0${hour}`;
-    }
-    if (String(minutes).length === 1) {
-      minutes = `0${minutes}`;
-    }
-    bot.sendMessage(msg.chat.id, `Хорошо, игра состоится ${day}.${month}.${year} в ${hour}:${minutes}.\nВ команде ${maxPalyers} человек.\n\nТеперь напишите вводную информацию для команды (эта инфа пойдет в описание опроса).`);
   } else {
     bot.sendMessage(msg.from.id, "Ошибка. Данная команда доступна администратору.\n/help - помощь")
   }
@@ -321,6 +281,8 @@ bot.on('message', msg => {
           gameStat: [],
           urlYoutubeFull: '',
           urlYoutubeReview: '',
+          urlYoutubeLeftHalf: '',
+          urlYoutubeRightHalf: '',
           gameOver: false,
           log: ''
         }).save()
@@ -333,7 +295,19 @@ bot.on('message', msg => {
               Games(item).save();
             })
           }).sort({ gameDate: -1 });
-          helper.handlerVotedCount(Users);
+          //helper.handlerVotedCount(Users);
+          Users.find({}, (err, user) => {
+            for (item in user) {
+              let voteСount = user[item].voteСount + 1;
+              Users.findOneAndUpdate({ _id: user[item].id }, {
+                $set: {
+                  voteСount: voteСount
+                },
+              }, { multi: true }, (e, data) => {
+                console.log('handlerVotedCount + 1 у каждого игрока');
+              })
+            }
+          })
         })
     });
   }
@@ -385,94 +359,6 @@ bot.on('poll_answer', poll_answer => {
     ) */
   }
 })
-//вывести на экран список игр доступных для создания счётчика
-bot.onText(/\/adminShowGamesList/, msg => {
-  Games.find({}, (err, game) => {
-    game.forEach((item, index) => {
-      item.numberId = index + 1;
-      Games(item).save();
-    })
-  }).sort({ gameDate: -1 })
-    .then(() => {
-      Games.find({ gameOver: false }, (err, game) => {
-        if (game.length === 0) {
-          bot.sendMessage(msg.from.id, `База данных пуста!`);
-          return;
-        }
-        let listGames = '';
-        for (key in game) {
-          let year = game[key].gameDate.toISOString().split("-")[0];
-          let month = game[key].gameDate.toISOString().split("-")[1];
-          let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
-          let date = `${day}.${month}.${year}`
-          listGames += `${game[key].numberId}) ${date} - игроков: ${game[key].gameMaxPlayers} - ${game[key].gameOver}\n`;
-        }
-        bot.sendMessage(msg.from.id, `Список доступных игр в базе: \n${listGames}`)
-          .then(() => {
-            if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
-              bot.sendMessage(msg.from.id, `/adminCreateCounter - для создания счётчика. Просто введите данныю команду и вторым параметром введите порядковый номер игры.`);
-            }
-          });
-      })
-        .sort({ numberId: 1 })
-    })
-})
-//вывести на экран список игр которые есть в базе
-bot.onText(/\/adminShowGamesAll/, msg => {
-  Games.find({}, (err, game) => {
-    game.forEach((item, index) => {
-      item.numberId = index + 1;
-      Games(item).save();
-    })
-  }).sort({ gameDate: -1 })
-    .then(() => {
-      Games.find({}, (err, game) => {
-        if (game.length === 0) {
-          bot.sendMessage(msg.from.id, `База данных пуста!`);
-          return;
-        }
-        let listGames = '';
-        for (key in game) {
-          let year = game[key].gameDate.toISOString().split("-")[0];
-          let month = game[key].gameDate.toISOString().split("-")[1];
-          let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
-          let date = `${day}.${month}.${year}`
-          listGames += `${game[key].numberId}) ${date} - игроков: ${game[key].gameStat.length} - ${game[key].gameOver}\n`;
-        }
-        bot.sendMessage(msg.from.id, `Список доступных игр в базе: \n${listGames}`);
-      })
-        .sort({ numberId: 1 })
-    })
-})
-//вывести на экран список последних 10 игр которые есть в базе
-bot.onText(/\/adminShowGamesLimit_10/, msg => {
-  Games.find({}, (err, game) => {
-    game.forEach((item, index) => {
-      item.numberId = index + 1;
-      Games(item).save();
-    })
-  }).sort({ gameDate: -1 })
-    .then(() => {
-      Games.find({}, (err, game) => {
-        if (game.length === 0) {
-          bot.sendMessage(msg.from.id, `База данных пуста!`);
-          return;
-        }
-        let listGames = '';
-        for (key in game) {
-          let year = game[key].gameDate.toISOString().split("-")[0];
-          let month = game[key].gameDate.toISOString().split("-")[1];
-          let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
-          let date = `${day}.${month}.${year}`
-          listGames += `${game[key].numberId}) ${date} - игроков: ${game[key].gameStat.length} - ${game[key].gameOver}\n`;
-        }
-        bot.sendMessage(msg.from.id, `Список доступных игр в базе: \n${listGames}`);
-      })
-        .sort({ numberId: 1 })
-        .limit(10)
-    })
-})
-
 bot.onText(/\/adminCreateCounter (.+)/, (msg, [source, numberId]) => {
   console.log('numberId', numberId);
   if (/^\d+$/.test(numberId) === false) {
@@ -541,6 +427,7 @@ bot.on('callback_query', query => {
 })
 //отрабатываем действия. если забил до занеси в базу обновления
 bot.on('callback_query', query => {
+  console.log('1callback_query', query);
   let playerAndAction = query.data.split('#')[0];
   let actionAddDel = query.data.split('#')[1];
   let startId = query.data.split('#')[2];
@@ -573,26 +460,24 @@ bot.on('callback_query', query => {
         }
         if (item.id === peremUserIdToGames) {
           let newDate = new Date;
-          let newDateHour = Number(newDate.toISOString().split('T')[1].split(':')[0]) + 5;
-          let newDateMinute = Number(newDate.toISOString().split('T')[1].split(':')[1]);
-          let s = Number(newDate.toISOString().split(':')[2].split('.')[0]);
-          let gameDateHour = Number(game[0].gameDate.toISOString().split('T')[1].split(':')[0]);
-          let gameDateMinute = Number(game[0].gameDate.toISOString().split('T')[1].split(':')[1]);
-          let newDateToHour = (newDateHour * 60) + newDateMinute;
-          let gameDateToHour = (gameDateHour * 60) + gameDateMinute;
-          let resToMin = newDateToHour - gameDateToHour;
-          let h = Math.floor(resToMin / 60);
-          let m = resToMin - (h * 60);
-          if (String(h).length === 1) {
-            h = `0${h}`;
-          }
-          if (String(m).length === 1) {
-            m = `0${m}`;
-          }
-          if (String(s).length === 1) {
-            s = `0${s}`;
-          }
+          let newDateHour = newDate.getHours();
+          let newDateMinute = newDate.getMinutes();
+          let newDateSecond = newDate.getSeconds();
+          let gameDateHour = Number(game[0].gameDate.toISOString().split("T")[1].split(":")[0]);
+          let gameDateMinute = game[0].gameDate.getMinutes();
+          let gameDateSecond = game[0].gameDate.getSeconds();
+          let ASec = (newDateHour * 60 * 60) + (newDateMinute * 60) + newDateSecond;
+          let BSec = (gameDateHour * 60 * 60) + (gameDateMinute * 60) + gameDateSecond;
+          let res = ASec - BSec;
+          let h = Math.floor(res % (3600 * 24) / 3600);
+          let m = Math.floor(res % 3600 / 60);
+          let s = Math.floor(res % 60);
+          String(h).length === 1 ? h = `0${h}` : h;
+          String(m).length === 1 ? m = `0${m}` : m;
+          String(s).length === 1 ? s = `0${s}` : s;
+
           let stopwatchLog = `${h}:${m}:${s}`;
+          console.log('stopwatchLog', stopwatchLog);
           goals = item.goals;
           ownGoal = item.ownGoal;
           assistant = item.assistant;
@@ -736,120 +621,77 @@ const handlerGamesKeyboard = (queryFromId, peremGameId) => {
     })
   )
 }
-//показать список всех сссылок
+bot.onText(/\/x/, msg => {
+  x.x(bot, msg, config.adminRuslanId, config.adminEgorId);
+})
+bot.onText(/\/start/, msg => {
+  start.start(bot, msg);
+})
+bot.onText(/\/help/, msg => {
+  help.help(bot, msg);
+})
+bot.onText(/\/listplayers/, msg => {
+  listplayers.listplayers(Users, bot, msg, config.adminRuslanId, config.adminEgorId);
+})
+bot.onText(/\/adminShowGamesList/, msg => {
+  adminShowGames.adminShowGamesList(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+})
+bot.onText(/\/adminShowGamesAll/, msg => {
+  adminShowGames.adminShowGamesAll(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+})
+bot.onText(/\/adminShowGamesLimit_10/, msg => {
+  adminShowGames.adminShowGamesLimit_10(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+})
 bot.onText(/\/adminShowYouTubeURL_All/, (msg) => {
-  Games.find({}, (err, game) => {
-    if (game.length === 0) {
-      bot.sendMessage(msg.from.id, `База данных пуста!`);
-      return;
-    }
-    let listGames = '';
-    for (key in game) {
-      let year = game[key].gameDate.toISOString().split("-")[0];
-      let month = game[key].gameDate.toISOString().split("-")[1];
-      let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
-      let date = `${day}.${month}.${year}`
-      listGames += `${game[key].numberId}) ${date}\nОбзор - ${game[key].urlYoutubeFull}\nПолное видео - ${game[key].urlYoutubeReview}\n\n`;
-    }
-    bot.sendMessage(msg.from.id, `Все ссылки на YouTube: \n\n${listGames}`, {
-      disable_web_page_preview: true
-    });
-  })
-    .sort({ numberId: 1 })
+  adminYouTube.adminShowYouTubeURL_All(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
 })
-//показать список последних 10 ссылок на ютуб
 bot.onText(/\/adminShowYouTubeURL_10/, (msg) => {
-  Games.find({}, (err, game) => {
-    if (game.length === 0) {
-      bot.sendMessage(msg.from.id, `База данных пуста!`);
-      return;
-    }
-    let listGames = '';
-    for (key in game) {
-      let year = game[key].gameDate.toISOString().split("-")[0];
-      let month = game[key].gameDate.toISOString().split("-")[1];
-      let day = game[key].gameDate.toISOString().split("-")[2].split('T')[0];
-      let date = `${day}.${month}.${year}`
-      listGames += `${game[key].numberId}) ${date}\nОбзор - ${game[key].urlYoutubeFull}\nПолное видео - ${game[key].urlYoutubeReview}\n\n`;
-    }
-    bot.sendMessage(msg.from.id, `Последние 10 ссылок на YouTube: \n\n${listGames}`, {
-      disable_web_page_preview: true
-    });
-  })
-    .sort({ numberId: 1 })
-    .limit(10)
-})
-
-bot.onText(/\/adminAddYouTubeURL_Full (.+) (.+)/, (msg, [source, numberId, URl]) => {
-  console.log('numberId', numberId);
-  if (/^\d+$/.test(numberId) === false) {
-    bot.sendMessage(msg.from.id, 'Ошибка. Введите целое число!');
-    return;
-  }
-  if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
-    Games.find({}, (err, game) => {
-      if (numberId > game.length) {
-        bot.sendMessage(msg.from.id, 'Ошибка. вы указали не верное число!\n/adminAddYouTubeURL_Full (N) (Link). Где N - это порядковый номер, а Link - это ссылка на полный матч.');
-        return;
-      }
-      if (game.length === 0) {
-        bot.sendMessage(msg.from.id, `База пуста.`);
-        return;
-      } else {
-        Games.findOneAndUpdate({ numberId: numberId }, {
-          $set: { urlYoutubeFull: URl },
-        }, { multi: true }, (e, data) => {
-          console.log(`Записали urlYoutubeFull: ${URl}`);
-          bot.sendMessage(msg.from.id, `Хорошо, вы записали ссылку!\n\n/adminShowYouTubeURL_10 - показать последние 10 ссылок на YouTube`, {
-            disable_web_page_preview: true
-          });
-        })
-      }
-    })
-  }
+  adminYouTube.adminShowYouTubeURL_10(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
 })
 bot.onText(/\/adminAddYouTubeURL_Review (.+) (.+)/, (msg, [source, numberId, URl]) => {
-  console.log('numberId', numberId);
-  if (/^\d+$/.test(numberId) === false) {
-    bot.sendMessage(msg.from.id, 'Ошибка. Введите целое число!');
-    return;
-  }
-  if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
-    Games.find({}, (err, game) => {
-      if (numberId > game.length) {
-        bot.sendMessage(msg.from.id, 'Ошибка. вы указали не верное число!\n/adminAddYouTubeURL_Review (N) (Link). Где N - это порядковый номер, а Link - это ссылка на обзор матча.');
-        return;
-      }
-      if (game.length === 0) {
-        bot.sendMessage(msg.from.id, `База пуста.`);
-        return;
-      } else {
-        Games.findOneAndUpdate({ numberId: numberId }, {
-          $set: { urlYoutubeReview: URl },
-        }, { multi: true }, (e, data) => {
-          console.log(`Записали urlYoutubeReview: ${URl}`);
-          bot.sendMessage(msg.from.id, `Хорошо, вы записали ссылку!\n\n/adminShowYouTubeURL_10 - показать последние 10 ссылок на YouTube`, {
-            disable_web_page_preview: true
-          });
-        })
-      }
-    })
-  }
+  adminYouTube.adminAddYouTubeURL_Review(
+    Games,
+    bot,
+    msg,
+    config.adminRuslanId,
+    config.adminEgorId,
+    numberId,
+    URl
+  );
 })
-//показать список игнорщиков
+bot.onText(/\/adminAddYouTubeURL_Full (.+) (.+)/, (msg, [source, numberId, URl]) => {
+  adminYouTube.adminAddYouTubeURL_Full(
+    Games,
+    bot,
+    msg,
+    config.adminRuslanId,
+    config.adminEgorId,
+    numberId,
+    URl
+  );
+})
+bot.onText(/\/adminAddYouTubeURL_LeftHalf (.+) (.+)/, (msg, [source, numberId, URl]) => {
+  adminYouTube.adminAddYouTubeURL_LeftHalf(
+    Games,
+    bot,
+    msg,
+    config.adminRuslanId,
+    config.adminEgorId,
+    numberId,
+    URl
+  );
+})
+bot.onText(/\/adminAddYouTubeURL_RightHalf (.+) (.+)/, (msg, [source, numberId, URl]) => {
+  adminYouTube.adminAddYouTubeURL_RightHalf(
+    Games,
+    bot,
+    msg,
+    config.adminRuslanId,
+    config.adminEgorId,
+    numberId,
+    URl
+  );
+})
 bot.onText(/\/adminShowIgnoreTheGame/, msg => {
-  let mess = 'Список игроков игнорирующих голосования на футбол:\n';
-  Users.find({}, (err, user) => {
-    for (item in user) {
-      let userName = user[item].nikname;
-      let voteСount = user[item].voteСount;
-      if (voteСount > 0) {
-        mess += `${userName} = ${voteСount}\n`
-      }
-    }
-  }).then(() => {
-    bot.sendMessage(msg.from.id, mess);
-    console.log('2', mess);
-  })
-
+  adminShowIgnoreTheGame.adminShowIgnoreTheGame(Users, bot, msg);
 })
