@@ -8,6 +8,14 @@ module.exports = {
   debug(obj = {}) {
     return JSON.stringify(obj, null, 4)
   },
+  botLOG(botLOG, msg, adminRuslanId) {
+    const first_name = msg.from.first_name;
+    const username = msg.from.username;
+    const last_name = msg.from.last_name;
+    const msgtext = msg.text;
+    const test = ` ${last_name} ${first_name} ${username}\n${msgtext}`;
+    botLOG.sendMessage(adminRuslanId, test);
+  },
   //можно будет удалить
   handlerVotedCount(Users) {
     Users.find({}, (err, user) => {

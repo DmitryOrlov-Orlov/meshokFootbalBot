@@ -33,6 +33,9 @@ const Users = new Schema({
   voteСount: {
     type: Number
   },
+  pollIdArr: {
+    type: Array
+  }
 })
 
 mongoose.model('users', Users)

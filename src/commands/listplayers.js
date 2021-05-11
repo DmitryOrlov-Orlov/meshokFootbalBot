@@ -16,18 +16,17 @@ module.exports = {
       for (key in users) {
         listPlayers += `${users[key].numberId}) ${users[key].nikname} - ${users[key].firstName}\n`;
       }
-      bot.sendMessage(msg.from.id, `Список пользователей в базе: \n${listPlayers}`)
+      bot.sendMessage(msg.from.id, `Список игроков в базе: \n${listPlayers}`)
         .then(() => {
           if (adminRuslanId === Number(msg.from.id) || adminEgorId === Number(msg.from.id)) {
             bot.sendMessage(msg.from.id, `/adminAddName - добавить профиль\n/adminDelPlayer - удалить профиль\n/adminChangeNamePlayer - изменить имя у пользователя`);
           } else {
-            bot.sendMessage(msg.from.id, `/adduser - закрепиться за своим именем`);
+            bot.sendMessage(msg.from.id, `/add_user - закрепиться за своим именем.`);
           }
         })
     })
       .sort({ numberId: 1 })
       .then(() => {
-        //helper.handlerSortingUsers(Users);
         Users.find({}, (err, user) => {
           user.forEach((item, index) => {
             item.numberId = index + 1;

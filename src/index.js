@@ -3,12 +3,14 @@ const mongoose = require('mongoose');
 const config = require('./config');
 const helper = require('./helper');
 const adminShowIgnoreTheGame = require('./commands/adminShowIgnoreTheGame');
-const adminYouTube = require('./commands/adminYouTube');
-const adminShowGames = require('./commands/adminShowGames');
+const youTube = require('./commands/youTube');
+const showGames = require('./commands/showGames');
 const listplayers = require('./commands/listplayers');
 const help = require('./commands/help');
 const start = require('./commands/start');
 const x = require('./commands/x');
+const showGameInformation = require('./commands/showGameInformation');
+const personalStatistics = require('./commands/personalStatistics');
 const keyboardGamesActions = require('./keyboard-games-actions');
 
 helper.logStart();
@@ -27,6 +29,10 @@ const Games = mongoose.model('games');
 const bot = new TelegramBot(config.TOKEN, {
   polling: true
 })
+const botLOG = new TelegramBot(config.TOKEN_LOG, {
+  polling: true
+})
+
 //скидываем все счетчики
 let adminAddName = 0;
 let adminDelPlayer = 0;
@@ -43,7 +49,7 @@ bot.on('message', msg => {
 bot.onText(/\/adminAddName/, msg => {
   if (config.adminRuslanId === msg.from.id || config.adminEgorId === msg.from.id) {
     adminAddName = 1;
-    bot.sendMessage(msg.from.id, `Что бы добавить новый профиль, отправьте Имя Фамилия.\n\n/listplayers - показать список пользователей`);
+    bot.sendMessage(msg.from.id, `Что бы добавить новый профиль, отправьте Имя Фамилия.\n\n/list_players - показать список пользователей`);
   } else {
     bot.sendMessage(msg.from.id, "Ошибка. Данная команда доступна администратору.\n/help - помощь")
   }
@@ -63,10 +69,11 @@ bot.on('message', msg => {
         goals: 0,
         assistant: 0,
         ownGoal: 0,
-        voteСount: 0
+        voteСount: 0,
+        pollIdArr: []
       }).save()
         .then((user) => {
-          bot.sendMessage(msg.from.id, `В базу добавлен - ${user.nikname}.\n\n/adminAddName - добавить профиль\n/listplayers - показать список пользователей`);
+          bot.sendMessage(msg.from.id, `В базу добавлен - ${user.nikname}.\n\n/adminAddName - добавить профиль\n/list_players - показать список пользователей`);
         })
       adminAddName = 0;
     }).sort({ numberId: -1 })
@@ -110,7 +117,7 @@ bot.on('message', msg => {
         return;
       }
       Users.findOne({ numberId: numberId }, (error, user) => {
-        bot.sendMessage(msg.from.id, `Был удален: ${user.nikname} - ${user.firstName}\n/listplayers - показать список пользователей.`);
+        bot.sendMessage(msg.from.id, `Был удален: ${user.nikname} - ${user.firstName}\n/list_players - показать список пользователей.`);
         user.remove();
       }).then(() => {
         helper.handlerSortingUsers(Users);
@@ -121,19 +128,23 @@ bot.on('message', msg => {
 })
 //Пользователь региструется в базе данных
 let addUser = 0;
-bot.onText(/\/adduser/, msg => {
+bot.onText(/\/add_user/, msg => {
+  let listPlayers = '';
   Users.find({}, (err, users) => {
     if (users.length === 0) {
       addUser = 0;
       bot.sendMessage(msg.from.id, `Извените, база пуста! \n\nОбратитесь к администратору, что бы он добавил ваше Имя за которым Вы сможете закрепится.`);
       return;
     }
-    let listPlayers = '';
     addUser = 1;
     for (key in users) {
+      if (users[key].userId === msg.from.id) {
+        bot.sendMessage(msg.from.id, 'Извените, но вы уже сохранены в базе. Если хотите изменить имя, обратитесь к администратору.');
+        return;
+      }
       listPlayers += `${users[key].numberId}) ${users[key].nikname} - ${users[key].firstName}\n`;
     }
-    bot.sendMessage(msg.from.id, `Привет, выбери из списка свое Имя, и отправь порядковый номер. Это позволит сохранить тебя в базе.\n\nСписок пользователей в базе: \n${listPlayers}`);
+    bot.sendMessage(msg.from.id, `Отлично, теперь отправь порядковый номер своего имени.\n\nСписок пользователей в базе: \n${listPlayers}`);
   }).sort({ numberId: 1 })
 })
 bot.on('message', msg => {
@@ -141,16 +152,17 @@ bot.on('message', msg => {
     let numberId = Number(msg.text);
     let flag = 0;
     if (numberId <= 0) {
-      bot.sendMessage(msg.from.id, 'Ошибка. Число отрицательное либо 0! \nНажмите на /adduser\nИ введите порядковый номер.');
+      bot.sendMessage(msg.from.id, 'Ошибка. Число отрицательное либо 0! \nНажмите на /add_user\nИ введите порядковый номер.');
       return;
     }
     if (/^\d+$/.test(msg.text) === false) {
-      bot.sendMessage(msg.from.id, 'Ошибка. Надо ввести число! \nНажмите на /adduser\nИ введите число.');
+      addUser = 0;
+      bot.sendMessage(msg.from.id, 'Ошибка. Надо ввести число! \nНажмите на /add_user\nИ введите число.');
       return;
     }
     Users.find({}, (err, users) => {
       if (numberId > users.length) {
-        bot.sendMessage(msg.from.id, 'Ошибка. вы указали не верное число!\nНажмите на /adduser\nИ введите порядковый номер.');
+        bot.sendMessage(msg.from.id, 'Ошибка. вы указали не верное число!\nНажмите на /add_user\nИ введите порядковый номер.');
       } else {
         for (key in users) {
           if (users[key].userId === msg.from.id) {
@@ -159,7 +171,7 @@ bot.on('message', msg => {
             return;
           }
           if (users[key].logIn === true && users[key].numberId === numberId) {
-            bot.sendMessage(msg.from.id, 'Извените, но за этим именем уже закрепился человек!\nНажмите на /adduser\nИ введите порядковый номер.');
+            bot.sendMessage(msg.from.id, 'Извените, но за этим именем уже закрепился человек!\nНажмите на /add_user\nИ введите порядковый номер.');
             return;
           }
         }
@@ -168,7 +180,7 @@ bot.on('message', msg => {
           Users.findOneAndUpdate({ numberId: numberId }, {
             $set: { userId: msg.from.id, logIn: true, firstName: msg.from.first_name },
           }, { multi: true }, (e, data) => {
-            bot.sendMessage(msg.from.id, 'Поздравляю. Вы добавлены в базу.');
+            bot.sendMessage(msg.from.id, 'Поздравляю. Вы добавлены в базу. Нажмите /start что бы увидеть список доступных команд.');
             console.log('Поздравляю. Вы добавлены в базу.');
           })
           return;
@@ -202,7 +214,7 @@ bot.onText(/\/adminChangeNamePlayer/, msg => {
 bot.on('message', msg => {
   if (adminChangeNamePlayer === 1 && msg.text[0] !== '/') {
     let numberId = msg.text.match(/\d+/g);
-    let newNikname = msg.text.replace(/[^a-zA-ZА-Яа-яЁё]/gi, '').replace(/\s+/gi, ', ');
+    let newNikname = msg.text.replace(/[^a-zA-ZА-Яа-яЁё]/gi, ' ');
     if (numberId === null || newNikname.length === 0) {
       bot.sendMessage(msg.from.id, 'Ошибка. \nНажмите на /adminChangeNamePlayer\nИ введите порядковый номер и новое имя.');
       return;
@@ -224,7 +236,6 @@ bot.on('message', msg => {
 })
 //С добавлением пользователей закончено
 //==========================================================================
-
 //==========================================================================
 //Создаем новую сущность  Games
 let gameDate = '';
@@ -279,14 +290,14 @@ bot.on('message', msg => {
           pollDescription: msg.text,
           gameMaxPlayers: gameMaxPlayers,
           gameStat: [],
-          urlYoutubeFull: '',
-          urlYoutubeReview: '',
-          urlYoutubeLeftHalf: '',
-          urlYoutubeRightHalf: '',
+          urlYoutubeFull: 'не добавлено',
+          urlYoutubeReview: 'не добавлено',
+          urlYoutubeLeftHalf: 'не добавлено',
+          urlYoutubeRightHalf: 'не добавлено',
           gameOver: false,
           log: ''
         }).save()
-        bot.sendMessage(msg.chat.id, 'Поздравляю, в чате должен появиться опрос. Проверь!\nЗа два часа до начала игры, голосование закроется.')
+        bot.sendMessage(msg.chat.id, 'Поздравляю, в чате должен появиться опрос. Проверь!')
       }).sort({ numberId: 1 })
         .then(() => {
           Games.find({}, (err, game) => {
@@ -295,7 +306,6 @@ bot.on('message', msg => {
               Games(item).save();
             })
           }).sort({ gameDate: -1 });
-          //helper.handlerVotedCount(Users);
           Users.find({}, (err, user) => {
             for (item in user) {
               let voteСount = user[item].voteСount + 1;
@@ -323,6 +333,13 @@ bot.on('poll_answer', poll_answer => {
         },
       }, { multi: true }, (e, data) => {
         console.log('handlerVotedCount 0 обнуляем');
+      })
+      Users.findOneAndUpdate({ userId: poll_answer.user.id }, {
+        $push: {
+          pollIdArr: poll_answer.poll_id
+        },
+      }, { multi: true }, (e, data) => {
+        console.log('pollIdArr: poll_answer.poll_id');
       })
       return;
     }
@@ -475,7 +492,6 @@ bot.on('callback_query', query => {
           String(h).length === 1 ? h = `0${h}` : h;
           String(m).length === 1 ? m = `0${m}` : m;
           String(s).length === 1 ? s = `0${s}` : s;
-
           let stopwatchLog = `${h}:${m}:${s}`;
           console.log('stopwatchLog', stopwatchLog);
           goals = item.goals;
@@ -484,9 +500,9 @@ bot.on('callback_query', query => {
           if (actionAddDel === 'goalDel') {
             goals--;
             Games.findOneAndUpdate({ _id: peremGameId, "gameStat._id": peremUserIdToGames }, {
-              $set: { "gameStat.$.goals": goals, log: `${game[0].log} * ${stopwatchLog} - ${nikname} -1 гол` },
+              $set: { "gameStat.$.goals": goals, log: `${game[0].log} * ${stopwatchLog} - ${nikname} отменить гол` },
             }, { multi: true }, (e, data) => {
-              bot.sendMessage(query.from.id, 'Хорошо. - 1 гол!');
+              bot.sendMessage(query.from.id, 'Хорошо. отменить гол!');
               console.log('Записали goalDel');
               handlerGamesKeyboard(query.from.id, peremGameId);
             })
@@ -494,9 +510,9 @@ bot.on('callback_query', query => {
           } else if (actionAddDel === 'goalAdd') {
             goals++;
             Games.findOneAndUpdate({ _id: peremGameId, "gameStat._id": peremUserIdToGames }, {
-              $set: { "gameStat.$.goals": goals, log: `${game[0].log} * ${stopwatchLog} - ${nikname} +1 гол` },
+              $set: { "gameStat.$.goals": goals, log: `${game[0].log} * ${stopwatchLog} - ${nikname} забил гол` },
             }, { multi: true }, (e, data) => {
-              bot.sendMessage(query.from.id, 'Хорошо. + 1 гол!');
+              bot.sendMessage(query.from.id, 'Хорошо. забил гол!');
               handlerGamesKeyboard(query.from.id, peremGameId);
               console.log('Записали goalAdd');
             })
@@ -504,9 +520,9 @@ bot.on('callback_query', query => {
           } else if (actionAddDel === 'ownGoalDel') {
             ownGoal--;
             Games.findOneAndUpdate({ _id: peremGameId, "gameStat._id": peremUserIdToGames }, {
-              $set: { "gameStat.$.ownGoal": ownGoal, log: `${game[0].log} * ${stopwatchLog} - ${nikname} -1 автогол` },
+              $set: { "gameStat.$.ownGoal": ownGoal, log: `${game[0].log} * ${stopwatchLog} - ${nikname} отменить автогол` },
             }, { multi: true }, (e, data) => {
-              bot.sendMessage(query.from.id, 'Хорошо. - 1 автогол!');
+              bot.sendMessage(query.from.id, 'Хорошо. отменить автогол!');
               handlerGamesKeyboard(query.from.id, peremGameId);
               console.log('Записали ownGoalDel');
             })
@@ -514,9 +530,9 @@ bot.on('callback_query', query => {
           } else if (actionAddDel === 'ownGoalAdd') {
             ownGoal++;
             Games.findOneAndUpdate({ _id: peremGameId, "gameStat._id": peremUserIdToGames }, {
-              $set: { "gameStat.$.ownGoal": ownGoal, log: `${game[0].log} * ${stopwatchLog} - ${nikname} +1 автогол` },
+              $set: { "gameStat.$.ownGoal": ownGoal, log: `${game[0].log} * ${stopwatchLog} - ${nikname} автогол` },
             }, { multi: true }, (e, data) => {
-              bot.sendMessage(query.from.id, 'Хорошо. + 1 автогол!');
+              bot.sendMessage(query.from.id, 'Хорошо. автогол!');
               handlerGamesKeyboard(query.from.id, peremGameId);
               console.log('Записали ownGoalAdd');
             })
@@ -524,9 +540,9 @@ bot.on('callback_query', query => {
           } else if (actionAddDel === 'assistantDel') {
             assistant--;
             Games.findOneAndUpdate({ _id: peremGameId, "gameStat._id": peremUserIdToGames }, {
-              $set: { "gameStat.$.assistant": assistant, log: `${game[0].log} * ${stopwatchLog} - ${nikname} -1 голевой пас` },
+              $set: { "gameStat.$.assistant": assistant, log: `${game[0].log} * ${stopwatchLog} - ${nikname} отменить голевой пас` },
             }, { multi: true }, (e, data) => {
-              bot.sendMessage(query.from.id, 'Хорошо. - 1 пас!');
+              bot.sendMessage(query.from.id, 'Хорошо. отменить голевой пас!');
               handlerGamesKeyboard(query.from.id, peremGameId);
               console.log('Записали assistantDel');
             })
@@ -534,9 +550,9 @@ bot.on('callback_query', query => {
           } else if (actionAddDel === 'assistantAdd') {
             assistant++;
             Games.findOneAndUpdate({ _id: peremGameId, "gameStat._id": peremUserIdToGames }, {
-              $set: { "gameStat.$.assistant": assistant, log: `${game[0].log} * ${stopwatchLog} - ${nikname} +1 голевой пас` },
+              $set: { "gameStat.$.assistant": assistant, log: `${game[0].log} * ${stopwatchLog} - ${nikname} отдал голевой пас` },
             }, { multi: true }, (e, data) => {
-              bot.sendMessage(query.from.id, 'Хорошо. + 1 пас!');
+              bot.sendMessage(query.from.id, 'Хорошо. отдал голевой пас!');
               handlerGamesKeyboard(query.from.id, peremGameId);
               console.log('Записали assistantAdd');
             })
@@ -569,7 +585,7 @@ bot.on('callback_query', query => {
               let date = game[0].gameDate.toISOString().split('T')[0];
               let text = `Поздравляю игра завершена!\n${date}\n\n${logGoals}\n${logAssistant}\n${logOwnGoal}`;
               let logtext = game[0].log.split('*');
-              let logtextRes = `Логи матча ${date}\n`;
+              let logtextRes = `Timeline матча ${date}\n`;
               logtext.forEach((item) => {
                 logtextRes += `${item}\n`;
               })
@@ -625,31 +641,34 @@ bot.onText(/\/x/, msg => {
   x.x(bot, msg, config.adminRuslanId, config.adminEgorId);
 })
 bot.onText(/\/start/, msg => {
-  start.start(bot, msg);
+  start.start(Users, bot, msg);
 })
 bot.onText(/\/help/, msg => {
   help.help(bot, msg);
 })
-bot.onText(/\/listplayers/, msg => {
+bot.onText(/\/list_players/, msg => {
   listplayers.listplayers(Users, bot, msg, config.adminRuslanId, config.adminEgorId);
 })
 bot.onText(/\/adminShowGamesList/, msg => {
-  adminShowGames.adminShowGamesList(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+  showGames.adminShowGamesList(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
 })
-bot.onText(/\/adminShowGamesAll/, msg => {
-  adminShowGames.adminShowGamesAll(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+bot.onText(/\/show_games_all/, msg => {
+  showGames.showGamesAll(Games, bot, msg);
 })
-bot.onText(/\/adminShowGamesLimit_10/, msg => {
-  adminShowGames.adminShowGamesLimit_10(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+bot.onText(/\/show_games_limit_10/, msg => {
+  showGames.showGamesLimit_10(Games, bot, msg);
 })
-bot.onText(/\/adminShowYouTubeURL_All/, (msg) => {
-  adminYouTube.adminShowYouTubeURL_All(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+bot.onText(/\/show_youtube_url_all/, (msg) => {
+  youTube.showYouTubeURL_All(Games, bot, msg);
 })
-bot.onText(/\/adminShowYouTubeURL_10/, (msg) => {
-  adminYouTube.adminShowYouTubeURL_10(Games, bot, msg, config.adminRuslanId, config.adminEgorId);
+bot.onText(/\/show_youtube_url_10/, (msg) => {
+  youTube.showYouTubeURL_10(Games, bot, msg);
+})
+bot.onText(/\/show_game_information (.+)/, (msg, [source, numberId]) => {
+  showGameInformation.showGameInformation(Games, bot, msg, numberId);
 })
 bot.onText(/\/adminAddYouTubeURL_Review (.+) (.+)/, (msg, [source, numberId, URl]) => {
-  adminYouTube.adminAddYouTubeURL_Review(
+  youTube.adminAddYouTubeURL_Review(
     Games,
     bot,
     msg,
@@ -660,7 +679,7 @@ bot.onText(/\/adminAddYouTubeURL_Review (.+) (.+)/, (msg, [source, numberId, URl
   );
 })
 bot.onText(/\/adminAddYouTubeURL_Full (.+) (.+)/, (msg, [source, numberId, URl]) => {
-  adminYouTube.adminAddYouTubeURL_Full(
+  youTube.adminAddYouTubeURL_Full(
     Games,
     bot,
     msg,
@@ -671,7 +690,7 @@ bot.onText(/\/adminAddYouTubeURL_Full (.+) (.+)/, (msg, [source, numberId, URl])
   );
 })
 bot.onText(/\/adminAddYouTubeURL_LeftHalf (.+) (.+)/, (msg, [source, numberId, URl]) => {
-  adminYouTube.adminAddYouTubeURL_LeftHalf(
+  youTube.adminAddYouTubeURL_LeftHalf(
     Games,
     bot,
     msg,
@@ -682,7 +701,7 @@ bot.onText(/\/adminAddYouTubeURL_LeftHalf (.+) (.+)/, (msg, [source, numberId, U
   );
 })
 bot.onText(/\/adminAddYouTubeURL_RightHalf (.+) (.+)/, (msg, [source, numberId, URl]) => {
-  adminYouTube.adminAddYouTubeURL_RightHalf(
+  youTube.adminAddYouTubeURL_RightHalf(
     Games,
     bot,
     msg,
@@ -694,4 +713,10 @@ bot.onText(/\/adminAddYouTubeURL_RightHalf (.+) (.+)/, (msg, [source, numberId, 
 })
 bot.onText(/\/adminShowIgnoreTheGame/, msg => {
   adminShowIgnoreTheGame.adminShowIgnoreTheGame(Users, bot, msg);
+})
+bot.onText(/\/personal_statistics/, msg => {
+  personalStatistics.personalStatistics(Users, bot, msg);
+})
+bot.on('message', msg => {
+  helper.botLOG(botLOG, msg, config.adminRuslanId);
 })
